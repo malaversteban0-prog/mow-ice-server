@@ -477,10 +477,10 @@
                 return `
                 <div class="producto-card ${stockDisponible <= 0 ? 'sin-stock' : ''}">
                     <div class="badge-stock">Stock: ${stockDisponible}</div>
-                    <div class="img-container"><img src="${p.img || 'https://via.placeholder.com/300x200?text=MOW'}"></div>
+                    <div class="img-container"><img src="${p.img || ''}"></div>
                     <div class="info-card">
                         <h4>${p.nombre}</h4>
-                        <span class="precio">$${p.precio.toLocaleString()}</span>
+                        <span class="precio">$${(p.precio || 0).toLocaleString()}</span>
                     </div>
                     <div class="selector-cantidad">
                         <button class="btn-qty" onclick="cambiarQty(${p.id}, -1)">-</button>
@@ -521,8 +521,8 @@
             Object.entries(cantidadesTemp).forEach(([id, qty]) => { 
                 if (qty > 0) { 
                     const p = productos.find(x => x.id == id); 
-                    t += (p.precio * qty); 
-                    h += `<div class="item-fila"><span><span class="badge-qty">x${qty}</span> ${p.nombre}</span><b>$${(p.precio * qty).toLocaleString()}</b></div>`; 
+                    t += ((p.precio || 0) * qty);
+                    h += `<div class="item-fila"><span><span class="badge-qty">x${qty}</span> ${p.nombre}</span><b>$${(((p.precio || 0) * qty)).toLocaleString()}</b></div>`; 
                 } 
             });
             lista.innerHTML = h || `<div style="text-align:center; color:#ccc; margin-top:50px;">Vacío</div>`;
@@ -661,7 +661,7 @@
         function actualizarTablaProd() {
             document.getElementById('tbody-prod').innerHTML = productos.map(p => {
                 const costo = Object.values(p.costos).reduce((a,b)=>a+b, 0);
-                const perc = p.precio > 0 ? (((p.precio - costo) / p.precio) * 100) : 0;
+                const perc = (p.precio || 0) > 0 ? ((((p.precio || 0) - costo) / (p.precio || 1)) * 100) : 0;
                 let colorMargen = "var(--rojo)";
                 if (perc > 50) colorMargen = "var(--acento)";
                 else if (perc >= 20) colorMargen = "var(--naranja)";
@@ -670,9 +670,17 @@
                     <td><img src="${p.img || ''}" width="35" height="25" style="object-fit:cover;"></td>
                     <td>${p.nombre}</td>
                     <td style="color:${p.stock < 5 ? 'red' : 'black'}; font-weight:700">${p.stock}</td>
-                    <td>$${p.precio.toLocaleString()}</td>
+                    <td>$${(p.precio || 0).toLocaleString()}</td>
                     <td style="color:${colorMargen}; font-weight:700">${perc.toFixed(1)}%</td>
-                    <td><button onclick="cargarEdicion(${p.id})">EDIT</button></td>
+                    <td style="display:flex; gap:5px; justify-content:center;">
+                        <button onclick="cargarEdicion(${p.id})">EDIT</button>
+
+                        <button 
+                            onclick="eliminarProducto(${p.id})"
+                            style="background:var(--rojo);">
+                            DEL
+                        </button>
+                    </td>
                 </tr>`;
             }).join('');
         }
@@ -712,10 +720,38 @@
                         ${v.stock}
                     </td>
                     <td>
-                        <button onclick="editarVaso(${v.id})">EDIT</button>
+                        <div style="display:flex; gap:5px; justify-content:center;">
+                            <button onclick="editarVaso(${v.id})">EDIT</button>
+
+                            <button 
+                                onclick="eliminarVaso(${v.id})"
+                                style="background:var(--rojo);">
+                                DEL
+                            </button>
+                        </div>
                     </td>
                 </tr>
             `).join('');
+        }
+
+        function eliminarVaso(id){
+
+            document.getElementById('confirm-modal').style.display = 'flex';
+
+            document.getElementById('btn-confirm-action').onclick = () => {
+
+                vasos = vasos.filter(v => v.id != id);
+
+                sincronizarConServidor();
+
+                actualizarTablaVasos();
+
+                actualizarSelectVasos();
+
+                cerrarConfirm();
+
+                lanzarToast("🗑️ Vaso eliminado");
+            };
         }
 
             function editarVaso(id){
@@ -740,6 +776,26 @@
                     `).join('')}
                 `;
             }
+
+        function eliminarProducto(id){
+
+        document.getElementById('confirm-modal').style.display = 'flex';
+
+        document.getElementById('btn-confirm-action').onclick = () => {
+
+            productos = productos.filter(p => p.id != id);
+
+            sincronizarConServidor();
+
+            actualizarTablaProd();
+
+            renderPOS();
+
+            cerrarConfirm();
+
+            lanzarToast("🗑️ Producto eliminado");
+        };
+    }
 
         function cargarEdicion(id) {
             const p = productos.find(x => x.id == id);

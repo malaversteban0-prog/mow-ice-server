@@ -275,7 +275,37 @@
                         <div style="display:grid; grid-template-columns: 1fr 1fr; gap:10px;">
                             <input type="number" id="p-precio" placeholder="Precio Venta ($)">
                             <input type="number" id="p-stock" placeholder="Stock">
+                            <select id="p-tipo-vaso">
+                                <option value="">Seleccionar vaso</option>
+                            </select>
                         </div>
+
+                        <div class="card-admin" style="margin-top:20px;">
+                            <h3 style="margin-top:0">Inventario de Vasos</h3>
+
+                            <input type="hidden" id="vaso-edit-id">
+
+                            <input type="text" id="vaso-nombre" placeholder="Nombre del vaso">
+
+                            <input type="number" id="vaso-stock" placeholder="Stock de vasos">
+
+                            <button onclick="guardarVaso()" 
+                                style="background:var(--azul-cerveza); color:white; width:100%; padding:15px; border-radius:12px; border:none; font-weight:700; cursor:pointer;">
+                                GUARDAR VASO
+                            </button>
+
+                            <table>
+                                <thead>
+                                    <tr>
+                                        <th>Vaso</th>
+                                        <th>Stock</th>
+                                        <th>Acción</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="tbody-vasos"></tbody>
+                            </table>
+                        </div>
+
                         <p style="font-size: 11px; font-weight: 700; margin: 15px 0 8px; color: #555;">COSTOS DE INSUMOS:</p>
                         <div style="display:grid; grid-template-columns: repeat(3, 1fr); gap:10px;">
                             <input type="number" id="i-vaso" placeholder="Vaso">
@@ -344,6 +374,7 @@
         // IMPLEMENTACIÓN SIN SERVIDOR USANDO LOCALSTORAGE[cite: 1]
         let productos = [];
         let historial = [];
+        let vasos = [];
         let ventasActuales = { 
             fecha: new Date().toLocaleDateString(), 
             items: {}, 
@@ -393,7 +424,8 @@
                     body: JSON.stringify({
                         productos,
                         historial,
-                        ventasActuales
+                        ventasActuales,
+                        vasos
                     })
                 });
 
@@ -417,7 +449,7 @@
                 if (db.productos) productos = db.productos;
                 if (db.historial) historial = db.historial;
                 if (db.ventasActuales) ventasActuales = db.ventasActuales;
-
+                if (db.vasos) vasos = db.vasos;
             } catch (err) {
 
                 console.log(err);
@@ -428,6 +460,8 @@
             renderPOS();
             actualizarTablaProd();
             actualizarSelectHist();
+            actualizarTablaVasos();
+            actualizarSelectVasos();
 
         }
 
@@ -508,6 +542,20 @@
                 if(qty > 0) {
                     const p = productos.find(x => x.id == id);
                     p.stock -= qty;
+                    if(p.tipoVaso){
+
+                        const vaso = vasos.find(v => v.nombre === p.tipoVaso);
+
+                        if(vaso){
+
+                            if(vaso.stock < qty){
+                                lanzarToast(`❌ Sin stock de vasos ${vaso.nombre}`);
+                                return;
+                            }
+
+                            vaso.stock -= qty;
+                        }
+                    }
 
                     ventasActuales.ingresos[medioPago] += (p.precio * qty);
                     ventasActuales.items[p.nombre] = (ventasActuales.items[p.nombre] || 0) + qty;
@@ -531,7 +579,11 @@
             lanzarToast("REGISTRADO ✅");
             
             actualizarTablaProd();
+            actualizarTablaVasos();
+            actualizarSelectVasos();
+
             cantidadesTemp = {}; 
+
             renderPOS(); 
             actualizarCarritoUI();
         }
@@ -578,6 +630,7 @@
                 nombre: document.getElementById('p-nombre').value, 
                 precio: parseInt(document.getElementById('p-precio').value),
                 stock: parseInt(document.getElementById('p-stock').value || 0),
+                tipoVaso: document.getElementById('p-tipo-vaso').value,
                 costos: { 
                     vaso: parseInt(document.getElementById('i-vaso').value || 0), 
                     pitillo: parseInt(document.getElementById('i-pit').value || 0), 
@@ -620,6 +673,70 @@
             }).join('');
         }
 
+        function guardarVaso() {
+
+            const id = document.getElementById('vaso-edit-id').value;
+
+            const vaso = {
+                id: id ? parseInt(id) : Date.now(),
+                nombre: document.getElementById('vaso-nombre').value,
+                stock: parseInt(document.getElementById('vaso-stock').value || 0)
+            };
+
+            if(id){
+                vasos[vasos.findIndex(v => v.id == id)] = vaso;
+            } else {
+                vasos.push(vaso);
+            }
+
+            sincronizarConServidor();
+
+            actualizarTablaVasos();
+            actualizarSelectVasos();
+
+            document.getElementById('vaso-edit-id').value = "";
+            document.getElementById('vaso-nombre').value = "";
+            document.getElementById('vaso-stock').value = "";
+        }
+
+        function actualizarTablaVasos() {
+
+            document.getElementById('tbody-vasos').innerHTML = vasos.map(v => `
+                <tr>
+                    <td>${v.nombre}</td>
+                    <td style="font-weight:700; color:${v.stock <= 10 ? 'red' : 'black'}">
+                        ${v.stock}
+                    </td>
+                    <td>
+                        <button onclick="editarVaso(${v.id})">EDIT</button>
+                    </td>
+                </tr>
+            `).join('');
+        }
+
+            function editarVaso(id){
+
+                const v = vasos.find(x => x.id == id);
+
+                document.getElementById('vaso-edit-id').value = v.id;
+                document.getElementById('vaso-nombre').value = v.nombre;
+                document.getElementById('vaso-stock').value = v.stock;
+            }
+
+            function actualizarSelectVasos(){
+
+                const select = document.getElementById('p-tipo-vaso');
+
+                select.innerHTML = `
+                    <option value="">Seleccionar vaso</option>
+                    ${vasos.map(v => `
+                        <option value="${v.nombre}">
+                            ${v.nombre} (${v.stock})
+                        </option>
+                    `).join('')}
+                `;
+            }
+
         function cargarEdicion(id) {
             const p = productos.find(x => x.id == id);
             document.getElementById('edit-id').value = p.id;
@@ -632,6 +749,7 @@
             document.getElementById('i-liq').value = p.costos.liq;
             document.getElementById('i-dul').value = p.costos.dulce;
             document.getElementById('i-cerveza').value = p.costos.cerveza || 0;
+            document.getElementById('p-tipo-vaso').value = p.tipoVaso || "";
             document.getElementById('form-title').innerText = "Edit: " + p.nombre;
         }
 
@@ -728,6 +846,7 @@
             document.getElementById('i-dul').value = "";
             document.getElementById('i-cerveza').value = "";
             document.getElementById('p-foto').value = "";
+            document.getElementById('p-tipo-vaso').value = "";
             document.getElementById('form-title').innerText = "Productos e Inventario";
         }
 

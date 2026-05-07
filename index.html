@@ -3,6 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="icon" href="data:,">
     <title>MOW ICE - POS EXCLUSIVO</title>
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600;700&display=swap" rel="stylesheet">
     <style>
@@ -810,13 +811,29 @@
             document.getElementById('btn-confirmar-borrado-real').onclick = () => {
                 const dia = historial[idx];
                 Object.entries(dia.items).forEach(([nombre, qty]) => {
+
                     const p = productos.find(x => x.nombre === nombre);
-                    if (p) p.stock += qty;
+
+                    if (p) {
+
+                        p.stock += qty;
+
+                        if(p.tipoVaso){
+
+                            const vaso = vasos.find(v => v.nombre === p.tipoVaso);
+
+                            if(vaso){
+                                vaso.stock += qty;
+                            }
+                        }
+                    }
                 });
                 historial.splice(idx, 1);
                 sincronizarConServidor(); //[cite: 1]
                 actualizarSelectHist();
                 actualizarTablaProd();
+                actualizarTablaVasos();
+                actualizarSelectVasos();
                 renderPOS();
                 verDiaHistorial();
                 cerrarConfirmBorrar();

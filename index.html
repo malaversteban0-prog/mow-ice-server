@@ -1082,25 +1082,28 @@
             document.getElementById('confirm-borrar-modal').style.display = 'flex';
             document.getElementById('btn-confirmar-borrado-real').onclick = () => {
                 const dia = historial[idx];
-                Object.entries(dia.items).forEach(([nombre, qty]) => {
+                if(dia.detalleVentas){
 
-                    const p = productos.find(x => x.nombre === nombre);
+                    dia.detalleVentas.forEach(v => {
 
-                    if (p) {
-                        p.stock += qty;
-                    }
-                });
+                        const p = productos.find(x => x.nombre === v.producto);
 
-                if(dia.vasosUsados){
+                        if(p){
 
-                    Object.entries(dia.vasosUsados).forEach(([nombre, qty]) => {
+                            p.stock += v.cantidad;
 
-                        const vaso = vasos.find(v => v.nombre === nombre);
+                            if(p.tipoVaso){
 
-                        if(vaso){
-                            vaso.stock += qty;
+                                const vaso = vasos.find(
+                                    x => x.nombre === p.tipoVaso
+                                );
+
+                                if(vaso){
+
+                                    vaso.stock += v.cantidad;
+                                }
+                            }
                         }
-
                     });
                 }
                 historial.splice(idx, 1);
@@ -1228,6 +1231,37 @@
                         }
                     }
                 }
+
+            
+
+            if(producto.costos.cerveza > 0){
+
+            datos.ventaCerveza -= (producto.precio * venta.cantidad);
+
+            datos.insumos.cerveza -=
+                (producto.costos.cerveza * venta.cantidad);
+
+        } else {
+
+            datos.totalBrutoMow -=
+                (producto.precio * venta.cantidad);
+
+            datos.insumos.vaso -=
+                (producto.costos.vaso * venta.cantidad);
+
+            datos.insumos.pitillo -=
+                (producto.costos.pitillo * venta.cantidad);
+
+            datos.insumos.sticker -=
+                (producto.costos.sticker * venta.cantidad);
+
+            datos.insumos.liq -=
+                (producto.costos.liq * venta.cantidad);
+
+            datos.insumos.dulce -=
+                (producto.costos.dulce * venta.cantidad);
+        }
+
 
                 datos.detalleVentas.splice(index, 1);
 

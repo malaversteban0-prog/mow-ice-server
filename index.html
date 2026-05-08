@@ -360,6 +360,64 @@
         </div>
     </div>
     
+    <div id="modal-pago" class="confirm-overlay">
+        <div class="confirm-card">
+
+            <h2 style="margin:0;">COBRAR VENTA</h2>
+
+            <div style="margin-top:25px;">
+
+                <div style="font-size:14px; color:var(--texto-gris);">
+                    TOTAL
+                </div>
+
+                <div id="modal-total"
+                    style="font-size:38px; font-weight:700; margin:10px 0 25px 0;">
+                    $0
+                </div>
+
+                <input 
+                    type="number" 
+                    id="input-paga-con"
+                    placeholder="¿Con cuánto paga?"
+                    oninput="calcularCambio()"
+                    style="font-size:20px; text-align:center; font-weight:700;"
+                >
+
+                <div style="margin-top:20px;">
+
+                    <div style="font-size:14px; color:var(--texto-gris);">
+                        DEVOLVER
+                    </div>
+
+                    <div id="valor-cambio"
+                        style="font-size:30px; font-weight:700; color:var(--acento); margin-top:8px;">
+                        $0
+                    </div>
+
+                </div>
+
+                <div style="display:flex; gap:15px; margin-top:30px;">
+
+                    <button
+                        onclick="cerrarModalPago()"
+                        style="flex:1; padding:15px; border:none; border-radius:12px; font-weight:700; cursor:pointer;">
+                        CANCELAR
+                    </button>
+
+                    <button
+                        onclick="procesarVentaFinal()"
+                        style="flex:1; padding:15px; border:none; border-radius:12px; background:var(--acento); color:white; font-weight:700; cursor:pointer;">
+                        CONFIRMAR
+                    </button>
+
+                </div>
+
+            </div>
+
+        </div>
+    </div>
+    
     <div id="confirm-borrar-modal" class="confirm-overlay">
         <div class="confirm-card">
             <h2 style="margin:0; color:var(--rojo);">¿BORRAR HISTORIAL?</h2>
@@ -530,65 +588,147 @@
         }
 
         function confirmarVenta() {
+
             let hay = false;
+            let total = 0;
+
             for (const [id, qty] of Object.entries(cantidadesTemp)) {
+
                 if (qty > 0) {
+
                     const p = productos.find(x => x.id == id);
-                    if (p.stock < qty) { lanzarToast(`❌ Stock bajo: ${p.nombre}`); return; }
+
+                    if (p.stock < qty) {
+
+                        lanzarToast(`❌ Stock bajo: ${p.nombre}`);
+                        return;
+                    }
+
                     hay = true;
+
+                    total += ((p.precio || 0) * qty);
                 }
             }
+
             if(!hay) return;
 
+            document.getElementById('modal-total').innerText =
+                "$" + total.toLocaleString();
+
+            document.getElementById('input-paga-con').value = "";
+
+            document.getElementById('valor-cambio').innerText = "$0";
+
+            document.getElementById('modal-pago').style.display = 'flex';
+
+            document.getElementById('input-paga-con').focus();
+        }
+
+        function cerrarModalPago(){
+
+            document.getElementById('modal-pago').style.display = 'none';
+        }
+
+        function calcularCambio(){
+
+            let total = 0;
+
             Object.entries(cantidadesTemp).forEach(([id, qty]) => {
-                if(qty > 0) {
+
+                if(qty > 0){
+
                     const p = productos.find(x => x.id == id);
+
+                    total += ((p.precio || 0) * qty);
+                }
+            });
+
+            const pagaCon =
+                parseInt(document.getElementById('input-paga-con').value || 0);
+
+            const cambio = pagaCon - total;
+
+            document.getElementById('valor-cambio').innerText =
+                "$" + (cambio > 0 ? cambio : 0).toLocaleString();
+        }
+
+        function procesarVentaFinal(){
+
+            document.getElementById('modal-pago').style.display = 'none';
+
+            Object.entries(cantidadesTemp).forEach(([id, qty]) => {
+
+                if(qty > 0) {
+
+                    const p = productos.find(x => x.id == id);
+
                     p.stock -= qty;
+
                     if(p.tipoVaso){
 
                         const vaso = vasos.find(v => v.nombre === p.tipoVaso);
 
                         if(vaso){
 
-                            if(vaso.stock < qty){
-                                lanzarToast(`❌ Sin stock de vasos ${vaso.nombre}`);
-                                return;
+                            vaso.stock -= qty;
+
+                            if(vaso.stock < 0){
+                                vaso.stock = 0;
                             }
 
-                            vaso.stock -= qty;
                             ventasActuales.vasosUsados[vaso.nombre] =
                                 (ventasActuales.vasosUsados[vaso.nombre] || 0) + qty;
                         }
                     }
 
                     ventasActuales.ingresos[medioPago] += (p.precio * qty);
-                    ventasActuales.items[p.nombre] = (ventasActuales.items[p.nombre] || 0) + qty;
-                    
+
+                    ventasActuales.items[p.nombre] =
+                        (ventasActuales.items[p.nombre] || 0) + qty;
+
                     if(p.costos.cerveza > 0) {
+
                         ventasActuales.ventaCerveza += (p.precio * qty);
-                        ventasActuales.insumos.cerveza += (p.costos.cerveza * qty);
+
+                        ventasActuales.insumos.cerveza +=
+                            (p.costos.cerveza * qty);
+
                     } else {
+
                         ventasActuales.totalBrutoMow += (p.precio * qty);
-                        ventasActuales.insumos.vaso += (p.costos.vaso * qty);
-                        ventasActuales.insumos.pitillo += (p.costos.pitillo * qty);
-                        ventasActuales.insumos.sticker += (p.costos.sticker * qty);
-                        ventasActuales.insumos.liq += (p.costos.liq * qty);
-                        ventasActuales.insumos.dulce += (p.costos.dulce * qty);
+
+                        ventasActuales.insumos.vaso +=
+                            (p.costos.vaso * qty);
+
+                        ventasActuales.insumos.pitillo +=
+                            (p.costos.pitillo * qty);
+
+                        ventasActuales.insumos.sticker +=
+                            (p.costos.sticker * qty);
+
+                        ventasActuales.insumos.liq +=
+                            (p.costos.liq * qty);
+
+                        ventasActuales.insumos.dulce +=
+                            (p.costos.dulce * qty);
                     }
                 }
             });
 
-            sincronizarConServidor(); //[cite: 1]
-            document.getElementById('sonido-venta').play();
-            lanzarToast("REGISTRADO ✅");
-            
+            sincronizarConServidor();
+
             actualizarTablaProd();
             actualizarTablaVasos();
             actualizarSelectVasos();
 
-            cantidadesTemp = {}; 
+            document.getElementById('sonido-venta').play();
 
-            renderPOS(); 
+            lanzarToast("REGISTRADO ✅");
+
+            cantidadesTemp = {};
+
+            renderPOS();
+
             actualizarCarritoUI();
         }
 

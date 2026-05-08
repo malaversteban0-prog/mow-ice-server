@@ -250,7 +250,7 @@
 
     <button 
         class="btn-config"
-        onclick="abrirPanelVentas()"
+        onclick="abrirModalPassword('ventas')"
         style="bottom:100px; background:var(--azul-cerveza);">
         📋
     </button>
@@ -435,7 +435,7 @@
                 </div>
 
                 <input 
-                    type="number" 
+                    type="text" 
                     id="input-paga-con"
                     placeholder="¿Con cuánto paga?"
                     oninput="calcularCambio()"
@@ -503,23 +503,48 @@
             detalleVentas: []
         };
 
-        function abrirModalPassword() {
+        
+
+        function abrirModalPassword(tipo = "admin") {
+
+            destinoPassword = tipo;
+
             document.getElementById('password-modal').style.display = 'flex';
+
             document.getElementById('input-pass').value = "";
+
             document.getElementById('input-pass').focus();
         }
 
         function cerrarModalPassword() {
             document.getElementById('password-modal').style.display = 'none';
+            const btn =
+            document.getElementById('btn-confirmar-password-ventas');
+
+        if(btn) btn.remove();
         }
 
         function validarPassword() {
+
             const pass = document.getElementById('input-pass').value;
+
             if (pass === "1986") {
+
                 cerrarModalPassword();
-                abrirAdmin();
+
+                if(destinoPassword === "ventas"){
+
+                    abrirPanelVentas();
+
+                } else {
+
+                    abrirAdmin();
+                }
+
             } else {
+
                 lanzarToast("❌ Contraseña Incorrecta");
+
                 document.getElementById('input-pass').value = "";
             }
         }
@@ -586,6 +611,7 @@
 
         let cantidadesTemp = {};
         let medioPago = "Efectivo";
+        let destinoPassword = "admin";
 
         function renderPOS() {
             document.getElementById('pos-grid').innerHTML = productos.map(p => {
@@ -702,13 +728,20 @@
                 }
             });
 
-            const pagaCon =
-                parseInt(document.getElementById('input-paga-con').value || 0);
+            let input =
+                document.getElementById('input-paga-con');
 
-            const cambio = pagaCon - total;
+            let valor =
+                input.value.replace(/\./g, '').replace(/,/g, '');
+
+            valor = parseInt(valor || 0);
+
+            input.value = valor.toLocaleString('es-CO');
+
+            const cambio = valor - total;
 
             document.getElementById('valor-cambio').innerText =
-                "$" + (cambio > 0 ? cambio : 0).toLocaleString();
+                "$" + (cambio > 0 ? cambio : 0).toLocaleString('es-CO');
         }
 
         function procesarVentaFinal(){

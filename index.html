@@ -248,6 +248,13 @@
 
     <button class="btn-config" onclick="abrirModalPassword()">⚙️</button>
 
+    <button 
+        class="btn-config"
+        onclick="abrirPanelVentas()"
+        style="bottom:100px; background:var(--azul-cerveza);">
+        📋
+    </button>
+
     <div id="password-modal" class="confirm-overlay">
         <div class="confirm-card">
             <h2 style="margin:0">ACCESO PRIVADO</h2>
@@ -349,6 +356,57 @@
         </div>
     </div>
 
+    <div class="admin-overlay" id="ventas-modal">
+
+        <div style="max-width:1000px; margin:auto;">
+
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:30px; border-bottom:2px solid #000; padding-bottom:20px;">
+
+                <h2 style="letter-spacing:2px;">
+                    HISTORIAL DE VENTAS
+                </h2>
+
+                <button
+                    onclick="cerrarPanelVentas()"
+                    style="background:var(--rojo); color:white; border:none; padding:12px 30px; border-radius:12px; cursor:pointer; font-weight:700;">
+                    CERRAR
+                </button>
+
+            </div>
+
+            <div class="card-admin">
+
+                <label style="font-weight:700;">
+                    Seleccionar fecha
+                </label>
+
+                <select id="select-fecha-ventas"
+                    onchange="mostrarVentasFecha()"
+                    style="margin-top:10px;">
+                </select>
+
+                <table>
+
+                    <thead>
+                        <tr>
+                            <th>Producto</th>
+                            <th>Cantidad</th>
+                            <th>Método Pago</th>
+                            <th>Total</th>
+                            <th>DEL</th>
+                        </tr>
+                    </thead>
+
+                    <tbody id="tbody-ventas-fecha"></tbody>
+
+                </table>
+
+            </div>
+
+        </div>
+
+    </div>
+
     <div id="confirm-modal" class="confirm-overlay">
         <div class="confirm-card">
             <h2 style="margin:0">¿CERRAR DÍA?</h2>
@@ -435,14 +493,15 @@
         let historial = [];
         let vasos = [];
         let ventasActuales = { 
-        fecha: new Date().toLocaleDateString(), 
-        items: {}, 
-        insumos: { vaso:0, pitillo:0, sticker:0, liq:0, dulce:0, cerveza:0 }, 
-        ingresos: { Efectivo:0, Nequi:0, Daviplata:0, Tarjeta:0 }, 
-        totalBrutoMow: 0, 
-        ventaCerveza: 0,
-        vasosUsados: {}
-    };
+            fecha: new Date().toLocaleDateString(), 
+            items: {}, 
+            insumos: { vaso:0, pitillo:0, sticker:0, liq:0, dulce:0, cerveza:0 }, 
+            ingresos: { Efectivo:0, Nequi:0, Daviplata:0, Tarjeta:0 }, 
+            totalBrutoMow: 0, 
+            ventaCerveza: 0,
+            vasosUsados: {},
+            detalleVentas: []
+        };
 
         function abrirModalPassword() {
             document.getElementById('password-modal').style.display = 'flex';
@@ -653,6 +712,9 @@
         }
 
         function procesarVentaFinal(){
+            if(!ventasActuales.detalleVentas){
+                ventasActuales.detalleVentas = [];
+            }
 
             document.getElementById('modal-pago').style.display = 'none';
 
@@ -685,6 +747,15 @@
 
                     ventasActuales.items[p.nombre] =
                         (ventasActuales.items[p.nombre] || 0) + qty;
+
+                    ventasActuales.detalleVentas.push({
+                        producto: p.nombre,
+                        cantidad: qty,
+                        metodo: medioPago,
+                        total: (p.precio * qty),
+                        hora: new Date().toLocaleTimeString()
+                    });
+
 
                     if(p.costos.cerveza > 0) {
 
@@ -983,7 +1054,8 @@
                 ingresos: { Efectivo:0, Nequi:0, Daviplata:0, Tarjeta:0 }, 
                 totalBrutoMow: 0, 
                 ventaCerveza: 0,
-                vasosUsados: {}
+                vasosUsados: {},
+                detalleVentas: []
             };
 
             sincronizarConServidor(); //[cite: 1]
@@ -1046,6 +1118,134 @@
         }
 
         function cerrarConfirmBorrar() { document.getElementById('confirm-borrar-modal').style.display = 'none'; }
+
+        function abrirPanelVentas(){
+
+            document.getElementById('ventas-modal').style.display = 'block';
+
+            actualizarSelectVentas();
+
+            mostrarVentasFecha();
+        }
+
+        function cerrarPanelVentas(){
+
+            document.getElementById('ventas-modal').style.display = 'none';
+        }
+
+        function actualizarSelectVentas(){
+
+            const select = document.getElementById('select-fecha-ventas');
+
+            let opciones =
+                `<option value="hoy">Hoy (${ventasActuales.fecha})</option>`;
+
+            opciones += historial.map((h, i) => `
+                <option value="${i}">
+                    ${h.fecha}
+                </option>
+            `).join('');
+
+            select.innerHTML = opciones;
+        }
+
+        function mostrarVentasFecha(){
+
+            const val =
+                document.getElementById('select-fecha-ventas').value;
+
+            const datos =
+                val === "hoy" ? ventasActuales : historial[val];
+
+            if(!datos) return;
+
+            const tbody =
+                document.getElementById('tbody-ventas-fecha');
+
+            if(!datos.detalleVentas || datos.detalleVentas.length === 0){
+
+                tbody.innerHTML = `
+                    <tr>
+                        <td colspan="4">
+                            Sin ventas registradas
+                        </td>
+                    </tr>
+                `;
+
+                return;
+            }
+
+            tbody.innerHTML = datos.detalleVentas.map((v, i) => `
+
+                <tr>
+                    <td>${v.producto}</td>
+                    <td>${v.cantidad}</td>
+                    <td>${v.metodo}</td>
+                    <td>$${(v.total || 0).toLocaleString()}</td>
+                    <td>
+                        <button onclick="eliminarVenta(${i})">
+                            DEL
+                        </button>
+                    </td>
+                </tr>
+
+            `).join('');
+        }
+
+        function eliminarVenta(index){
+
+            const val =
+                document.getElementById('select-fecha-ventas').value;
+
+            const datos =
+                val === "hoy" ? ventasActuales : historial[val];
+
+            if(!datos) return;
+
+            const venta = datos.detalleVentas[index];
+
+            if(!venta) return;
+
+            document.getElementById('confirm-modal').style.display = 'flex';
+
+            document.getElementById('btn-confirm-action').onclick = () => {
+
+                const producto =
+                    productos.find(p => p.nombre === venta.producto);
+
+                if(producto){
+
+                    producto.stock += venta.cantidad;
+
+                    if(producto.tipoVaso){
+
+                        const vaso =
+                            vasos.find(v => v.nombre === producto.tipoVaso);
+
+                        if(vaso){
+
+                            vaso.stock += venta.cantidad;
+                        }
+                    }
+                }
+
+                datos.detalleVentas.splice(index, 1);
+
+                sincronizarConServidor();
+
+                actualizarTablaProd();
+
+                actualizarTablaVasos();
+
+                renderPOS();
+
+                mostrarVentasFecha();
+
+                cerrarConfirm();
+
+                lanzarToast("🗑️ Venta eliminada");
+            };
+        }
 
         function abrirAdmin() { 
             document.getElementById('admin-modal').style.display = 'block'; 

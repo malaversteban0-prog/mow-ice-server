@@ -278,6 +278,16 @@
                 <div>
                     <div class="card-admin">
                         <h3 id="form-title" style="margin-top:0">Productos e Inventario</h3>
+
+                        <label style="display:flex;align-items:center;gap:10px;margin-bottom:15px;">
+                            <input
+                                type="checkbox"
+                                id="chk-unificar-stock"
+                                onchange="toggleUnificarStock()"
+                                style="width:auto;">
+                            Unificar stock con vasos
+                        </label>
+
                         <input type="hidden" id="edit-id">
                         <input type="text" id="p-nombre" placeholder="Nombre del Producto">
                         <div style="display:grid; grid-template-columns: 1fr 1fr; gap:10px;">
@@ -492,6 +502,7 @@
         let productos = [];
         let historial = [];
         let vasos = [];
+        let unificarStockVasos = false;
         let ventasActuales = { 
             fecha: new Date().toLocaleDateString(), 
             items: {}, 
@@ -569,7 +580,8 @@
                         productos,
                         historial,
                         ventasActuales,
-                        vasos
+                        vasos,
+                        unificarStockVasos
                     })
                 });
 
@@ -594,6 +606,11 @@
                 if (db.historial) historial = db.historial;
                 if (db.ventasActuales) ventasActuales = db.ventasActuales;
                 if (db.vasos) vasos = db.vasos;
+
+                if(typeof db.unificarStockVasos !== 'undefined'){
+                    unificarStockVasos = db.unificarStockVasos;
+                }
+
             } catch (err) {
 
                 console.log(err);
@@ -607,15 +624,51 @@
             actualizarTablaVasos();
             actualizarSelectVasos();
 
+            const chk = document.getElementById('chk-unificar-stock');
+
+            if(chk){
+                chk.checked = unificarStockVasos;
+            }
+
+
         }
 
         let cantidadesTemp = {};
         let medioPago = "Efectivo";
         let destinoPassword = "admin";
 
+        function toggleUnificarStock(){
+
+            unificarStockVasos =
+                document.getElementById('chk-unificar-stock').checked;
+
+            sincronizarConServidor();
+
+            renderPOS();
+        }
+
         function renderPOS() {
             document.getElementById('pos-grid').innerHTML = productos.map(p => {
-                const stockDisponible = p.stock - (cantidadesTemp[p.id] || 0);
+                
+                let stockReal = p.stock;
+
+                if(unificarStockVasos && p.tipoVaso){
+
+                    const vaso =
+                        vasos.find(v => v.nombre === p.tipoVaso);
+
+                    if(vaso){
+
+                        stockReal = Math.min(
+                            p.stock,
+                            vaso.stock
+                        );
+                    }
+                }
+
+                const stockDisponible =
+                    stockReal - (cantidadesTemp[p.id] || 0);
+
                 const valorActual = cantidadesTemp[p.id] || 0;
                 return `
                 <div class="producto-card ${stockDisponible <= 0 ? 'sin-stock' : ''}">
@@ -638,11 +691,32 @@
 
         function setManualQty(id, valor) {
             const p = productos.find(x => x.id == id);
+
             let num = parseInt(valor) || 0;
+
             if (num < 0) num = 0;
-            if (num > p.stock) {
-                lanzarToast(`⚠️ Máximo stock: ${p.stock}`);
-                num = p.stock;
+
+            let stockReal = p.stock;
+
+            if(unificarStockVasos && p.tipoVaso){
+
+                const vaso =
+                    vasos.find(v => v.nombre === p.tipoVaso);
+
+                if(vaso){
+
+                    stockReal = Math.min(
+                        p.stock,
+                        vaso.stock
+                    );
+                }
+            }
+
+            if (num > stockReal) {
+
+                lanzarToast(`⚠️ Máximo stock: ${stockReal}`);
+
+                num = stockReal;
             }
             cantidadesTemp[id] = num;
             actualizarCarritoUI();
@@ -652,7 +726,29 @@
         function cambiarQty(id, delta) {
             const p = productos.find(x => x.id == id);
             const actual = cantidadesTemp[id] || 0;
-            if (delta > 0 && (actual + delta) > p.stock) { lanzarToast("⚠️ Sin stock"); return; }
+
+            let stockReal = p.stock;
+
+            if(unificarStockVasos && p.tipoVaso){
+
+                const vaso =
+                    vasos.find(v => v.nombre === p.tipoVaso);
+
+                if(vaso){
+
+                    stockReal = Math.min(
+                        p.stock,
+                        vaso.stock
+                    );
+                }
+            }
+
+            if (delta > 0 && (actual + delta) > stockReal) {
+
+                lanzarToast("⚠️ Sin stock");
+
+                return;
+            }
             cantidadesTemp[id] = actual + delta;
             if (cantidadesTemp[id] < 0) cantidadesTemp[id] = 0;
             actualizarCarritoUI(); renderPOS();

@@ -215,6 +215,77 @@
             font-weight: bold;
             border: 2px solid var(--primario);
         }
+
+        .switch-container{
+            display:flex;
+            justify-content:space-between;
+            align-items:center;
+            margin-bottom:15px;
+            padding:12px;
+            border-radius:12px;
+            background:#f5f5f5;
+            font-weight:700;
+        }
+
+        .switch{
+            position:relative;
+            display:inline-block;
+            width:90px;
+            height:42px;
+        }
+
+        .switch input{
+            display:none;
+        }
+
+        .slider{
+            position:absolute;
+            inset:0;
+            background:#e53935;
+            border-radius:50px;
+            cursor:pointer;
+            transition:.3s;
+            box-shadow:0 4px 10px rgba(0,0,0,.2);
+        }
+
+        .slider:before{
+            content:"";
+            position:absolute;
+            width:34px;
+            height:34px;
+            left:4px;
+            top:4px;
+            background:white;
+            border-radius:50%;
+            transition:.3s;
+            box-shadow:0 2px 8px rgba(0,0,0,.3);
+        }
+
+        .slider:after{
+            content:"OFF";
+            position:absolute;
+            right:14px;
+            top:50%;
+            transform:translateY(-50%);
+            color:white;
+            font-size:14px;
+            font-weight:700;
+        }
+
+        .switch input:checked + .slider{
+            background:#4caf50;
+        }
+
+        .switch input:checked + .slider:before{
+            transform:translateX(48px);
+        }
+
+        .switch input:checked + .slider:after{
+            content:"ON";
+            left:16px;
+            right:auto;
+        }
+
     </style>
 </head>
 <body>
@@ -279,14 +350,18 @@
                     <div class="card-admin">
                         <h3 id="form-title" style="margin-top:0">Productos e Inventario</h3>
 
-                        <label style="display:flex;align-items:center;gap:10px;margin-bottom:15px;">
-                            <input
-                                type="checkbox"
-                                id="chk-unificar-stock"
-                                onchange="toggleUnificarStock()"
-                                style="width:auto;">
-                            Unificar stock con vasos
-                        </label>
+                        <div class="switch-container">
+                            <span>Unificar stock con vasos</span>
+
+                            <label class="switch">
+                                <input
+                                    type="checkbox"
+                                    id="chk-unificar-stock"
+                                    onchange="toggleUnificarStock()">
+
+                                <span class="slider"></span>
+                            </label>
+                        </div>
 
                         <input type="hidden" id="edit-id">
                         <input type="text" id="p-nombre" placeholder="Nombre del Producto">

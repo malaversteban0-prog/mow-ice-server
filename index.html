@@ -660,9 +660,7 @@
                     if(vaso){
 
                         stockReal = vaso.stock;
-                            p.stock,
-                            vaso.stock
-                        );
+                            
                     }
                 }
 
@@ -706,9 +704,7 @@
                 if(vaso){
 
                     stockReal = vaso.stock;
-                        p.stock,
-                        vaso.stock
-                    );
+                        
                 }
             }
 
@@ -737,9 +733,7 @@
                 if(vaso){
 
                     stockReal = vaso.stock;
-                        p.stock,
-                        vaso.stock
-                    );
+                        
                 }
             }
 
@@ -1002,6 +996,18 @@
             document.getElementById('tbody-prod').innerHTML = productos.map(p => {
                 const costo = Object.values(p.costos).reduce((a,b)=>a+b, 0);
                 const perc = (p.precio || 0) > 0 ? ((((p.precio || 0) - costo) / (p.precio || 1)) * 100) : 0;
+
+                let stockMostrar = p.stock;
+
+                if(unificarStockVasos && p.tipoVaso){
+
+                    const vaso = vasos.find(v => v.nombre === p.tipoVaso);
+
+                    if(vaso){
+                        stockMostrar = vaso.stock;
+                    }
+                }
+
                 let colorMargen = "var(--rojo)";
                 if (perc > 50) colorMargen = "var(--acento)";
                 else if (perc >= 20) colorMargen = "var(--naranja)";
@@ -1009,7 +1015,7 @@
                 return `<tr>
                     <td><img src="${p.img || ''}" width="35" height="25" style="object-fit:cover;"></td>
                     <td>${p.nombre}</td>
-                    <td style="color:${p.stock < 5 ? 'red' : 'black'}; font-weight:700">${p.stock}</td>
+                    <td style="color:${stockMostrar < 5 ? 'red' : 'black'}; font-weight:700">${stockMostrar}</td>
                     <td>$${(p.precio || 0).toLocaleString()}</td>
                     <td style="color:${colorMargen}; font-weight:700">${perc.toFixed(1)}%</td>
                     <td style="display:flex; gap:5px; justify-content:center;">

@@ -2391,14 +2391,13 @@
 
         async function probarServidor() {
 
-            const res = await fetch('https://mow-ice-server-production.up.railway.app');
+            const res = await fetch(API);
 
             const data = await res.text();
 
             console.log(data);
 
         }
-
         probarServidor();
 
         
